@@ -1,5 +1,5 @@
 * {
-  margin:0;
+  margin: 0;
   padding: 0;
 }
 
@@ -48,7 +48,7 @@ nav ul li a {
   color: white;
   max-width: 800px;
   margin: 0 auto 0px;
-  background: #fff;
+  background: #222;
 }
 
 footer {
