@@ -1,158 +1,187 @@
-Boss boss;
-Ship ship;
-PFont font;
-boolean gameover;
+ArrayList<Bullet> bulletList;
+ArrayList<Laser> laserList;
+Enemy enemy;
+player player;
 
-//
-void setup() {
-  size(320, 320);
-  frameRate(20);
-  noCursor();        // clear mouse cursor
-  rectMode(CENTER); // center mode
-  
-  ship = new Ship();
-  boss = new Boss(320 / 2, 60, 40);
-  
-  font = createFont("FFScala", 24);
-  textFont(font);
-  
-  gameover = false;
+void setup(){
+   size(500,500);
+   noStroke();
+   
+   bulletList=new ArrayList<Bullet>();
+   laserList=new ArrayList<Laser>();
+   enemy=new Enemy();
+   player=new player();
 }
-//
-class Ship {
-  int hp;
-  int sx, sy;
-  Ship() {
-    hp = 255;
-    sx = mouseX;
-    sy = mouseY;
-  }
-  
-  void hit() {
-    hp-=32;
-    if (hp <= 0)
-      gameover = true;
-  }
-  //
-  void update(int x, int y) {
-    sx = x;
-    sy = y;
-    stroke(255,255,255);
-    fill(255 - hp, 0, 0);
-    triangle(x, y - 7, x - 10, y + 7, x + 10, y + 7);
-  
-    if (mousePressed) {
-      line(x, y - 7, x, 0);
-      if (abs(sx - boss.bx) < (boss.bw / 2))
-        boss.hit();
-    }
-  }
-}
-//
-class Tama {
-  float tx, ty, tr, dx, dy;
-  
-  Tama(float x, float y, float r, float ldx, float ldy) {
-    tx = x;
-    ty = y;
-    tr = r;
-    dx = ldx;
-    dy = ldy;
-  }
-  
-  boolean update() {
-    tx += dx;
-    ty += dy;
-    stroke(255, 255, 0);
-    noFill();
-    ellipse(tx, ty, tr, tr);
 
-    // area check 
-    if (ty > 320 || ty < 0 || tx > 320 || tx < 0) {
-        return false;
-    }
-    // hit check
-    if (dist(tx, ty, ship.sx, ship.sy) < (tr / 2) + 2)
-      ship.hit();
+void draw(){
+   //fill(0,0,0,20);
+   //rect(0,0,500,500);
+   
+   //fill(255,0,0);
+   for(int i=bulletList.size()-1;i>=0;i--){
+     Bullet bullet=bulletList.get(i);
+     bullet.move();
+     bullet.draw();
+     
+     if(collision(player.x,player.y,3,3,bullet.x,bullet.y,5,5)){
+       bullet.hit=true;
+       player.hitPoint--;
+     }
+     
+     if(bullet.needRemove()) bulletList.remove(i);
+   }
+   
+   fill(0,0,255);
+   for(int i=laserList.size()-1;i>=0;i--){
+     Laser laser=laserList.get(i);
+     laser.move();
+     laser.draw();
+     
+     if(collision(enemy.x,enemy.y,20,20,laser.x,laser.y,laser.w,laser.h)){
+       laser.hit=true;
+       enemy.hitPoint--;
+     }
+     
+     if(laser.needRemove()) laserList.remove(i);
+   }
+   
+   //fill(167,87,168);
+   enemy.move();
+   enemy.draw();
+   
+   fill(0,255,0);
+   player.move();
+   player.draw();
+   
+   fill(255,255,0);
+   text("player:"+nf(player.hitPoint,3),20,20);
+   text("Enemy:"+nf(enemy.hitPoint,3),20,40);
+   if(player.hitPoint==0||enemy.hitPoint==0) noLoop(); 
+}
+
+boolean collision(float x1,float y1,float w1,float h1,float x2,float y2,float w2,float h2){
+   if(x1+w1/2 < x2-w2/2) return false;
+   if(x2+w2/2 < x1-w1/2) return false;
+   if(y1+h1/2 < y2-h2/2) return false;
+   if(y2+h2/2 < y1-h1/2) return false;
+   return true;
+}
+
+
+class Bullet{
+    float x,y;
+    float angle,speed,angleSpeed;
     
-    return true;
-  }
-}
-//
-class Boss {
-  int hp, bw;
-  float bx, by, bcx;
-  ArrayList danmaku;
- 
-  Boss(float x, float y, int w) {
-    bx = bcx = x;
-    by = y;
-    bw = w;
-    hp = 256;
-    danmaku = new ArrayList(); 
-  }
-  //
-  void hit() {
-    hp--;
-    if (hp <= 0) 
-      gameover = true;
-  }
-  //
-  void fire_360(float x, float y) {  
-    for (int i = 0; i < 360; i+= 10) { 
-      float rad = radians(i);
-      danmaku.add(new Tama(x, y, 15, cos(rad), sin(rad)));
+    Bullet(float x,float y,float angle,float speed,float angleSpeed){
+       this.x=x;
+       this.y=y;
+       this.angle=angle;
+       this.speed=speed;
+       this.angleSpeed=angleSpeed;
     }
-  }
-  //
-  void update() {
-    // boss update
-    float dx;
-    dx = 75.0 * sin(radians(frameCount * 6));
-    bx = bcx + dx;
-    stroke(0,255,0);
-    fill(256 - hp, 0, 0);
-    rect(bx, by, bw, 20);
-   
-    // fire
-    if (frameCount % 30 == 0)
-      fire_360(bx, by);
-   
-    // danmaku update
-    for (int i = danmaku.size() -1; i >= 0; i--) {
-      Tama t = (Tama)danmaku.get(i);
-      if (t.update() == false)
-        danmaku.remove(i);
+    
+    void move(){
+       angle=(angle+angleSpeed)%360;
+       x+=cos(radians(angle))*speed;
+       y+=sin(radians(angle))*speed;
     }
-  }
-}
-// print time
-void print_time() {
-  float ft = (float)millis() / 1000;
-  
-  textAlign(RIGHT);
-  text(nf(ft, 1, 2), 320, 24);
+    
+    void draw(){
+        ellipse(x,y,10,10);
+    }
+    
+    boolean hit=false;
+    
+    boolean needRemove(){
+       return x<0||x>500||y<0||y>500||hit;
+    }
 }
 
-//
-void draw() {
-  if (gameover) {  // game over
-    textAlign(CENTER);
-    if (ship.hp <= 0) {
-      fill(255, 255, 255);  // blue
-      text("YOU LOSE", 320 / 2, 320 / 2);
-    } else {
-      fill(255 * sin(frameCount), 255, 255 * cos(frameCount));  // red
-      text("YOU WIN!", 320 / 2, 320 / 2);
-    }
-  } else {
-    background(0); // clear
-    ship.update(mouseX, mouseY - 20);
-    boss.update();
-    
-    fill(255, 255, 255); 
-   
-    print_time();
+class Laser extends Bullet{
+  float w;
+  float h;
+  
+  Laser(float x,float y,float angle,float w,float h){
+    super(x,y,angle,3,0);
+    this.w=w;
+    this.h=h;
+  }
+  
+  void draw(){
+    rect(x-w/2,y-h/2,w,h);
   }
 }
-      
+
+
+class Enemy{
+  float x=500/2;
+  float y=500/2;
+  int angle=0;
+  int hitPoint=30;
+  
+  void move(){
+    angle=(angle+1)%360;
+    x+=cos(radians(angle))*2;
+    y+=sin(radians(angle*2+90))*3;
+  }
+  
+  void draw(){
+    rect(x-10,y-10,20,20);
+    if(frameCount%90==0) circleShot();
+    if(frameCount%10==0) slowCurveShot();
+    if(frameCount%120==0) snipeShot();
+  }
+  
+  void circleShot(){
+    for(float angle=0;angle<360;angle+=10){
+       Bullet bullet=new Bullet(x,y,angle,2,0);
+       bulletList.add(bullet);
+    }
+  }
+  
+  void slowCurveShot(){
+    Bullet bullet=new Bullet(x,y,angle,1,0.2);
+    bulletList.add(bullet);
+  }
+  
+  void snipeShot(){
+    float dx=player.x-x;
+    float dy=player.y-y;
+    float degree=degrees(atan2(dy,dx));
+    Bullet bullet=new Bullet(x,y,degree,2,0);
+    bulletList.add(bullet);
+  }  
+}
+
+class player{
+  float x=500/2;
+  float y=500-10;
+  int hitPoint=10;
+  
+  void move(){
+    if(keyPressed){
+      switch(keyCode){
+        case UP: y-=2; break;
+        case DOWN: y+=2; break;
+        case LEFT: x-=2; break;
+        case RIGHT: x+=2; break;
+      }
+    }
+    if(x-10<0) x=10;
+    if(x+10>500) x=500-10;
+    if(y-10<0) y=10;
+    if(y+10>500) y=500-10;
+  }
+  
+  void draw(){
+    triangle(x,y-10,x-10,y+10,x+10,y+10);
+    if(frameCount%30==0) laserShot();
+  }
+  
+  void laserShot(){
+    laserList.add(new Laser(x,y,-90,2,20));
+    laserList.add(new Laser(x,y,90,2,20));
+    laserList.add(new Laser(x,y,180,20,2));
+    laserList.add(new Laser(x,y,0,20,2));
+  }
+}
